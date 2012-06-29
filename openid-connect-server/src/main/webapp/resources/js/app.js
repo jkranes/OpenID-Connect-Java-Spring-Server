@@ -29,11 +29,11 @@
                 minlength:3,*/
                 maxlength:200
             },
-            accessTokenTimeout: {
+            accessTokenValiditySeconds: {
                 required: true,
                 type:"number"
             },
-            refreshTokenTimeout: {
+            refreshTokenValiditySeconds: {
                 required: true,
                 type:"number"
             },
@@ -61,15 +61,15 @@
         defaults:{
             clientName:"",
             clientSecret:"",
-            registeredRedirectUri:[""],
-            authorizedGrantTypes:[],
+            registeredRedirectUri:[],
+            authorizedGrantTypes:["authorization_code"],
             scope:["openid"],
             authorities:[],
             clientDescription:"",
             clientId:null,
             allowRefresh:false,
-            accessTokenTimeout: 0,
-            refreshTokenTimeout: 0
+            accessTokenValiditySeconds: 0,
+            refreshTokenValiditySeconds: 0
         },
 
         urlRoot:"api/clients"
@@ -190,14 +190,29 @@
 
             $('.control-group').removeClass('error');
 
+            // do some trimming to the redirect URI to allow null value
+            var registeredRedirectUri = $.trim($('#registeredRedirectUri textarea').val()).replace(/ /g,'').split("\n");
+            if (registeredRedirectUri.length == 1 && registeredRedirectUri[0] == "") {
+                registeredRedirectUri = [];
+            }
+
+            // build the grant type object
+            var authorizedGrantTypes = [];
+            $.each(["authorization_code","client_credentials","password","implicit"],function(index,type) {
+                if ($('#authorizedGrantTypes-' + type).is(':checked')) {
+                    authorizedGrantTypes.push(type);
+                }
+            });
+
             var valid = this.model.set({
                 clientName:$('#clientName input').val(),
                 clientSecret:$('#clientSecret input').val(),
-                registeredRedirectUri:$.trim($('#registeredRedirectUri textarea').val()).replace(/ /g,'').split("\n"),
+                registeredRedirectUri:registeredRedirectUri,
                 clientDescription:$('#clientDescription textarea').val(),
                 allowRefresh:$('#allowRefresh').is(':checked'),
-                accessTokenTimeout: $('#accessTokenTimeout input').val(),
-                refreshTokenTimeout: $('#refreshTokenTimeout input').val(),
+                authorizedGrantTypes: authorizedGrantTypes,
+                accessTokenValiditySeconds: $('#accessTokenValiditySeconds input').val(),
+                refreshTokenValiditySeconds: $('#refreshTokenValiditySeconds input').val(),
                 scope:$.map($('#scope textarea').val().replace(/,$/,'').replace(/\s/g,' ').split(","), $.trim)
             });
 
@@ -206,8 +221,8 @@
                     success:function () {
                         app.navigate('clients', {trigger:true});
                     },
-                    error:function () {
-
+                    error:function (model,resp) {
+                        console.error("Oops! The object didn't save correctly.",resp);
                     }
                 });
 
@@ -217,8 +232,8 @@
                         success:function () {
                             app.navigate('clients', {trigger:true});
                         },
-                        error:function () {
-
+                        error:function (model,resp) {
+                            console.error("Oops! The object didn't create correctly.",resp);
                         }
                     });
 
